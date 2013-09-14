@@ -1,5 +1,5 @@
 -module(heap).
--export([new/1,insert/2,extract_min/1]).
+-export([new/1,insert/2,extract_min/1,foldmin/3]).
 
 new(CompareFunc) -> {heap, CompareFunc, 0, none}.
 
@@ -39,6 +39,12 @@ add_element(Element, CompareFunc, {e, Val, LeftTree={e, LeftChild,_,_}, RightTre
 
 extract_min({heap, CompareFunc, Count, CurrentTree={e, Val, _, _}}) ->
     {Val, {heap, CompareFunc, Count-1, remove_element(CompareFunc, CurrentTree)}}.
+
+
+foldmin(_, Acc, {heap, _, 0, _}) -> Acc;
+foldmin(Fun, Acc, Heap) ->
+    {Min, NewHeap}=extract_min(Heap),
+    foldmin(Fun, Fun(Min, Acc), NewHeap).
 
 
 remove_element(_, {e, _, none, none}) -> none;
