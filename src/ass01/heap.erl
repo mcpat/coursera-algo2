@@ -42,8 +42,6 @@ extract_min({heap, CompareFunc, Count, CurrentTree={e, Val, _, _}}) ->
 
 
 remove_element(_, {e, _, none, none}) -> none;
-remove_element(_, {e, _, {e, LeftChild,none,none}, none}) -> {e, LeftChild, none, none};
-remove_element(_, {e, _, none, {e, RightChild,none,none}}) -> {e, RightChild, none, none};
 remove_element(CompareFunc, {e, _, LeftTree={e, LeftChild,_,_}, none}) -> {e, LeftChild, remove_element(CompareFunc, LeftTree), none};
 remove_element(CompareFunc, {e, _, none, RightTree={e, RightChild,_,_}}) -> {e, RightChild, none, remove_element(CompareFunc, RightTree)};
 remove_element(CompareFunc, {e, _, LeftTree={e, LeftChild,_,_}, RightTree={e, RightChild,_,_}}) ->
