@@ -18,9 +18,14 @@ new(Set) ->
 
 make([], UF) -> UF;
 make([Head|Tail], UF) ->
-    ets:insert(UF, {Head, {?ROOT_MARKER, 0}}),
-    [{?SET_COUNT,OldCount}]=ets:lookup(UF, ?SET_COUNT),
-    ets:insert(UF, {?SET_COUNT, OldCount+1}),
+    EC=ets:lookup(UF, Head),
+    if
+        EC == [] ->
+            ets:insert(UF, {Head, {?ROOT_MARKER, 0}}),
+            [{?SET_COUNT,OldCount}]=ets:lookup(UF, ?SET_COUNT),
+            ets:insert(UF, {?SET_COUNT, OldCount+1});
+        true -> true
+    end,
     make(Tail, UF).
 
 
