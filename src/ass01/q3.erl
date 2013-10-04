@@ -1,11 +1,20 @@
 -module(q3).
--export([read_edges/0, collect_vertices/1, prim_mst/2, kruskal_mst/0, sum_mst_costs/1]).
+-export([read_edges/0, collect_vertices/1, prim_mst/0, kruskal_mst/0, sum_mst_costs/1]).
+-export_type([edge/0]).
 
-compare_edges({edge, _, _, CostA}, {edge, _, _, CostB}) -> 
-    CostA < CostB.
+-record(edge, {
+    a :: integer(),
+    b :: integer(),
+    costs :: integer()
+}).
+
+-opaque edge() :: #edge{}.
+
+compare_edges(A, B) -> 
+    A#edge.costs < B#edge.costs.
 
 read_edges() -> 
-    {Ok,Device} = file:open("edges.txt", [read]),
+    {Ok,Device} = file:open("ass01/edges.txt", [read]),
     {Ok,_} = io:fread(Device, "", "~d ~d"),
     try get_all_edges(Device)
         after file:close(Device)
@@ -13,7 +22,7 @@ read_edges() ->
 
 get_all_edges(Device) ->
     case io:fread(Device, "", "~d ~d ~d") of
-        {ok,[Start,End,Costs]} -> [{edge, Start, End, Costs} | get_all_edges(Device)];
+        {ok,[Start,End,Costs]} -> [#edge{a=Start, b=End, costs=Costs} | get_all_edges(Device)];
         eof -> []
     end.
 
@@ -26,6 +35,11 @@ insert_vertex(V, []) -> [V];
 insert_vertex(V, [V]) -> [V];
 insert_vertex(V, [V | R]) -> [V | R];
 insert_vertex(V, [A | R]) -> [A | insert_vertex(V, R)].
+
+prim_mst() ->
+    Edges=read_edges(),
+    Vertices=collect_vertices(Edges),
+    sum_mst_costs(prim_mst(Edges,Vertices)).
 
 prim_mst(Edges, Vertices) -> prim_mst(Edges, Vertices, [], []).
 prim_mst([], [], _, Mst) -> Mst;
@@ -53,25 +67,30 @@ remove_inner_edges([E= {edge, Start, End, _} | Rest], SubGraph, OutsideEdges) ->
     end.
 
 
-get_new_vertex({edge, A, B, _}, SubGraph) ->
-    Ain=lists:member(A, SubGraph),
+get_new_vertex(Edge, SubGraph) ->
+    Ain=lists:member(Edge#edge.a, SubGraph),
     if
-        Ain -> B;
-        true -> A
+        Ain -> Edge#edge.b;
+        true -> Edge#edge.a
     end.
 
+-spec get_minimum_cutting_edge(Edges, SubGraph, OldMin) -> Min when
+    Edges :: [edge()],
+    SubGraph :: term(),
+    OldMin :: term(),
+    Min :: edge().
+
 get_minimum_cutting_edge([], _, Minimum) -> Minimum;
-get_minimum_cutting_edge([E= {edge, Start, End, NewCost} | Rest], SubGraph, OldMin) ->
-    Ain=lists:member(Start, SubGraph),
-    Bin=lists:member(End, SubGraph),
+get_minimum_cutting_edge([E | Rest], SubGraph, OldMin) ->
+    Ain=lists:member(E#edge.a, SubGraph),
+    Bin=lists:member(E#edge.b, SubGraph),
     if
         Ain or Bin ->
             if
                 OldMin == nil -> get_minimum_cutting_edge(Rest, SubGraph, E);
                 true ->
-                    {edge, _, _, OldCost}= OldMin,
                     if
-                        OldCost > NewCost -> get_minimum_cutting_edge(Rest, SubGraph, E);
+                        OldMin#edge.costs > E#edge.costs -> get_minimum_cutting_edge(Rest, SubGraph, E);
                         true -> get_minimum_cutting_edge(Rest, SubGraph, OldMin)
                     end
             end;
@@ -84,37 +103,14 @@ construct_heap(Edges) -> lists:foldl(fun heap:insert/2, heap:new(fun compare_edg
 kruskal_mst() ->
     Edges=read_edges(),
     Heap=construct_heap(Edges),
-    {_,_,MstCosts}=heap:foldmin(fun process_edge/2, {[], [], 0}, Heap),
+    UF=union_find:new(collect_vertices(Edges)),
+    {_,_,MstCosts}=heap:walk(fun process_edge/2, {UF, [], 0}, Heap),
     MstCosts.
 
-process_edge(Edge={edge, _, _, Costs}, Acc={SubGraphs, MstEdges, MstCosts}) ->
-    case check_cycle(Edge, SubGraphs) of
-        {ok, NewSubGraphs} -> {NewSubGraphs, [Edge | MstEdges], MstCosts + Costs};
-        cycle -> Acc
-    end.
-
-check_cycle(Edge={edge, A, B, _}, SubGraphs) -> 
-    case find_matches(Edge, SubGraphs, none) of
-        cycle -> cycle;
-        none -> {ok, [ordsets:from_list([A,B]) | SubGraphs]};
-        {one, Match} -> {ok, [ordsets:union(ordsets:from_list([A,B]), Match) | lists:delete(Match, SubGraphs)]};
-        {two, Match1, Match2} -> {ok, [ordsets:union(Match1, Match2) | lists:delete(Match1, lists:delete(Match2, SubGraphs))]}
-    end.
-
-find_matches(_, [], none) -> none;
-find_matches(_, [], Match) -> {one, Match};
-find_matches(Edge={edge, A, B, _}, [F | R], none) ->
-    Ain=ordsets:is_element(A, F),
-    Bin=ordsets:is_element(B, F),
-    if
-        Ain and Bin -> cycle;
-        Ain or Bin -> find_matches(Edge, R, F);
-        true -> find_matches(Edge, R, none)
-    end;
-find_matches(Edge={edge, A, B, _}, [F | R], Match) ->
-    Ain=ordsets:is_element(A, F),
-    Bin=ordsets:is_element(B, F),
-    if
-        Ain or Bin -> {two, Match, F};
-        true -> find_matches(Edge, R, Match)
+process_edge(Edge, Acc={UF, MstEdges, MstCosts}) ->
+    case {union_find:find(Edge#edge.a, UF), union_find:find(Edge#edge.b, UF)} of
+        {Same, Same} -> Acc;
+        {AP, BP} ->
+            union_find:union(AP,BP,UF),
+            {UF, [Edge | MstEdges], MstCosts + Edge#edge.costs}
     end.
