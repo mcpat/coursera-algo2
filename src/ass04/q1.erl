@@ -42,6 +42,19 @@ init_A0(I, N, G, A0) ->
     init_A0(I+1, N, G, A0).
 
 
+
+insert_node(N, G) ->
+    insert_node(1, N, N+1, G).
+insert_node(C, N, _, _) when C > N -> ok;
+insert_node(C, N, New, G) ->
+    case myarray:get(C, G) of
+        ?UNDEFINED -> ToInsert= [{New,0}];
+        Edges -> ToInsert= [{New,0} | Edges]
+    end,
+    myarray:set(C, ToInsert, G),
+    insert_node(C+1,N,New,G).
+
+
 find_shortest_path_costs(N, A) ->
     find_shortest_path_costs(1, N, A, ?INFINITY).
 
