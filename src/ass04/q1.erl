@@ -11,16 +11,20 @@ load_graph(Name) ->
     try get_all_edges(Device, GraphArr)
         after file:close(Device)
     end,
-    {NumNodes, GraphArr}.
+    {300, GraphArr}.
 
 get_all_edges(Device, GraphArr) ->
     case io:fread(Device, "", "~d ~d ~d") of
         {ok,[Start,End,Costs]} ->
-            case myarray:get(End, GraphArr) of
-                ?UNDEFINED -> ToInsert= [{Start,Costs}];
-                Edges -> ToInsert= [{Start,Costs} | Edges]
-            end,
-            myarray:set(End, ToInsert, GraphArr), get_all_edges(Device, GraphArr);
+            if
+                (Start =< 300) and (End =< 300) ->
+                    case myarray:get(End, GraphArr) of
+                        ?UNDEFINED -> ToInsert= [{Start,Costs}];
+                        Edges -> ToInsert= [{Start,Costs} | Edges]
+                    end,
+                    myarray:set(End, ToInsert, GraphArr), get_all_edges(Device, GraphArr);
+                true -> get_all_edges(Device, GraphArr)
+            end;
         eof -> true
     end.
 
