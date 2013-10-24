@@ -61,7 +61,7 @@ xloop(I, W, V, Max, Copy=[{CIdx, CVal, _} | _], [{LIdx, LVal, _} | LRest]) when 
 xloop(I, W, V, Max, [{CIdx, CVal, _} | CRest], Lookup=[{LIdx, LVal, _} | _]) when (CIdx >= LIdx + W) and (CVal =< LVal + V) ->
     xloop(I, W, V, Max, CRest, Lookup);
 
-% keep already know combinations with lower weights 
+% keep already known combinations with lower weights 
 xloop(I, W, V, Max, [CF={CIdx, _, _} | CRest], Lookup=[{LIdx, _, _} | _]) when CIdx < LIdx + W ->
     [CF | xloop(I, W, V, Max, CRest, Lookup)];
 
